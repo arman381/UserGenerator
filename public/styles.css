@@ -1,0 +1,141 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #e8f5e8 0%, #d4e8d4 100%);
+    min-height: 100vh;
+    padding: 60px 20px;
+    background-attachment: fixed;
+}
+
+.container {
+    max-width: 480px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 24px;
+    padding: 50px 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(139, 195, 74, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+h1 {
+    font-size: 2.4em;
+    color: #2d3e2f;
+    margin-bottom: 40px;
+    font-weight: 600;
+    position: relative;
+    z-index: 2;
+}
+
+form {
+    position: relative;
+    z-index: 2;
+}
+
+label {
+    display: block;
+    text-align: left;
+    margin: 20px 0 8px;
+    font-weight: 500;
+    color: #2d3e2f;
+    font-size: 1.1em;
+}
+
+input[type="number"] {
+    width: 100%;
+    padding: 16px 20px;
+    border: 2px solid #c8e6c9;
+    border-radius: 16px;
+    font-size: 1.1em;
+    transition: all 0.3s;
+    background: #f8fff8;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    border-color: #66bb6a;
+    box-shadow: 0 0 0 4px rgba(102, 187, 106, 0.15);
+}
+
+p {
+    margin: 25px 0 35px;
+    color: #666;
+    font-size: 1.05em;
+    line-height: 1.5;
+}
+
+button {
+    width: 260px;
+    height: 60px;
+    background: linear-gradient(135deg, #66bb6a, #4caf50);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-size: 1.3em;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(76, 175, 80, 0.3);
+    transition: all 0.3s;
+    margin: 20px auto;
+    display: block;
+}
+
+button:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(76, 175, 80, 0.4);
+}
+
+button:active {
+    transform: translateY(-1px);
+}
+
+/* Страница результата */
+.result-title {
+    font-size: 3em;
+    margin: 20px 0;
+    color: #2d3e2f;
+}
+
+.category-text {
+    font-size: 1.8em;
+    font-weight: 600;
+    margin: 30px 0;
+}
+
+a {
+    display: inline-block;
+    margin-top: 40px;
+    padding: 14px 40px;
+    background: white;
+    color: #4caf50;
+    text-decoration: none;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 1.1em;
+    border: 2px solid #4caf50;
+    transition: all 0.3s;
+}
+
+a:hover {
+    background: #4caf50;
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(76, 175, 80, 0.2);
+}
