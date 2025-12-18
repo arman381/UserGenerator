@@ -1,78 +1,110 @@
+require('dotenv').config();
 const express = require('express');
-const path = require('path');
+const axios = require('axios');
 const app = express();
 const port = 3000;
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Раздаём статические файлы из папки public
+app.use(express.static('public'));
 
-const pageTemplate = (content) => `
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Калькулятор ИМТ</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-    <div class="container">
-        ${content}
-    </div>
-</body>
-</html>
-`;
+app.get('/api/get-user', async (req, res) => {
+  try {
+    // 1. Random User API
+    const userResponse = await axios.get('https://randomuser.me/api/');
+    const user = userResponse.data.results[0];
 
-app.get('/', (req, res) => {
-    const form = `
-        <h1>Калькулятор ИМТ</h1>
-        <form action="/calculate-bmi" method="POST">
-            <label>Вес (кг):</label>
-            <input type="number" step="0.1" name="weight" required>
+    const userData = {
+      firstName: user.name.first,
+      lastName: user.name.last,
+      gender: user.gender,
+      picture: user.picture.large,
+      age: user.dob.age,
+      dob: new Date(user.dob.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+      city: user.location.city,
+      country: user.location.country,
+      address: `${user.location.street.number} ${user.location.street.name}`
+    };
 
-            <label>Рост (см):</label>
-            <input type="number" name="height" required>
+    const countryName = userData.country;
 
-            <p>Пожалуйста, введите рост в сантиметрах!</p>
+    // 2. Countrylayer API (строго по заданию, с фиксом)
+    let countryInfo = {
+      name: countryName,
+      capital: 'N/A',
+      languages: 'N/A',
+      currency: 'N/A',
+      flag: `https://flagcdn.com/w320/${countryName.toLowerCase().replace(/\s+/g, '-').substring(0,2)}.png`, // красивый fallback флаг
+      exchange: { toUSD: 'N/A', toKZT: 'N/A' }
+    };
 
-            <button type="submit">Рассчитать ИМТ</button>
-        </form>
-    `;
-    res.send(pageTemplate(form));
-});
+    try {
+      const countryResponse = await axios.get(
+        `http://api.countrylayer.com/v2/name/${encodeURIComponent(countryName)}?access_key=${process.env.COUNTRY_LAYER_API_KEY}&fullText=true`
+      );
+      const cData = countryResponse.data[0] || {};
 
-app.post('/calculate-bmi', (req, res) => {
-    const weight = parseFloat(req.body.weight);
-    const heightCm = parseFloat(req.body.height);
+      countryInfo.name = cData.name || countryName;
+      countryInfo.capital = cData.capital || 'N/A';
 
-    if (isNaN(weight) || isNaN(heightCm) || weight <= 0 || heightCm <= 0) {
-        return res.send(pageTemplate(`
-            <h1 style="color: red;">Ошибка ввода</h1>
-            <p>Введите положительные числа!</p>
-            <a href="/">← Вернуться</a>
-        `));
+      // Languages
+      if (Array.isArray(cData.languages) && cData.languages.length > 0) {
+        countryInfo.languages = cData.languages.map(l => l.name).join(', ');
+      }
+
+      // Currencies
+      if (Array.isArray(cData.currencies) && cData.currencies.length > 0) {
+        countryInfo.currency = cData.currencies[0].code || 'N/A';
+      }
+
+      // Flag (если Countrylayer дал — используем, иначе fallback)
+      if (cData.flag && cData.flag.trim() !== '') {
+        countryInfo.flag = cData.flag;
+      }
+    } catch (err) {
+      console.error('Countrylayer error:', err.response?.data || err.message);
     }
 
-    const heightM = heightCm / 100;
-    const bmi = weight / (heightM * heightM);
+    // 3. Exchange Rate API
+    if (countryInfo.currency && countryInfo.currency !== 'N/A') {
+      try {
+        const exchangeResponse = await axios.get(`https://api.exchangerate-api.com/v4/latest/${countryInfo.currency}`);
+        const rates = exchangeResponse.data.rates || {};
+        countryInfo.exchange.toUSD = rates.USD ? `1 ${countryInfo.currency} = ${rates.USD.toFixed(2)} USD` : 'N/A';
+        countryInfo.exchange.toKZT = rates.KZT ? `1 ${countryInfo.currency} = ${rates.KZT.toFixed(2)} KZT` : 'N/A';
+      } catch (err) {
+        console.error('Exchange error:', err.message);
+      }
+    }
 
-    let category, color;
-    if (bmi < 18.5)      { category = 'Недостаточный вес'; color = '#e74c3c'; }
-    else if (bmi < 25)   { category = 'Нормальный вес';     color = '#27ae60'; }
-    else if (bmi < 30)   { category = 'Избыточный вес';    color = '#f39c12'; }
-    else                 { category = 'Ожирение';          color = '#c0392b'; }
+    // 4. News API
+    let newsArticles = [];
+    try {
+      const newsResponse = await axios.get(
+        `https://newsapi.org/v2/everything?q=${encodeURIComponent(countryName)}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${process.env.NEWS_API_KEY}`
+      );
+      const articles = newsResponse.data.articles || [];
 
-    const result = `
-        <h1>Ваш ИМТ: ${bmi.toFixed(2)}</h1>
-        <p style="color: ${color}; font-size: 1.5em; font-weight: bold;">
-            Категория: ${category}
-        </p>
-        <a href="/">← Рассчитать ещё раз</a>
-    `;
+      const filtered = articles
+        .filter(article => article.title && article.title.toLowerCase().includes(countryName.toLowerCase()))
+        .slice(0, 5);
 
-    res.send(pageTemplate(result));
+      newsArticles = filtered.map(article => ({
+        title: article.title || 'No title',
+        image: article.urlToImage || '',
+        description: article.description || 'No description',
+        url: article.url || '#'
+      }));
+    } catch (err) {
+      console.error('News API error:', err.response?.data || err.message);
+    }
+
+    res.json({ user: userData, country: countryInfo, news: newsArticles });
+  } catch (error) {
+    console.error('Critical error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
 });
 
 app.listen(port, () => {
-    console.log(`Сервер запущен → http://localhost:${port}`);
+  console.log(`Server running at http://localhost:${port}`);
 });
