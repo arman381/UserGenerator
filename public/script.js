@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const newsDiv = document.getElementById('newsInfo');
 
   btn.addEventListener('click', async () => {
-    // Отключаем кнопку и очищаем предыдущие данные
     btn.disabled = true;
     userDiv.innerHTML = '';
     countryDiv.innerHTML = '';
@@ -19,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const data = await response.json();
 
-      // === 1. User Information ===
       const u = data.user;
       userDiv.innerHTML = `
         <h2>User Information</h2>
@@ -38,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // === 2. Country Information + Exchange ===
       const c = data.country;
       countryDiv.innerHTML = `
         <h2>Country Information</h2>
@@ -55,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // === 3. News Headlines ===
       newsDiv.innerHTML = '<h2>News Headlines (containing country name)</h2>';
       if (data.news.length === 0) {
         newsDiv.innerHTML += '<p>No relevant news found for this country.</p>';

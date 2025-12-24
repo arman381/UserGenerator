@@ -4,14 +4,14 @@ const axios = require('axios');
 const app = express();
 const port = 3000;
 
-// Раздаём статические файлы из папки public
 app.use(express.static('public'));
 
 app.get('/api/get-user', async (req, res) => {
   try {
-    // 1. Random User API
     const userResponse = await axios.get('https://randomuser.me/api/');
     const user = userResponse.data.results[0];
+
+
 
     const userData = {
       firstName: user.name.first,
@@ -27,8 +27,7 @@ app.get('/api/get-user', async (req, res) => {
 
     const countryName = userData.country;
 
-    // 2. Countrylayer API (строго по заданию, с фиксом)
-    let countryInfo = {
+    let countryInfo = { 
       name: countryName,
       capital: 'N/A',
       languages: 'N/A',
@@ -37,34 +36,37 @@ app.get('/api/get-user', async (req, res) => {
       exchange: { toUSD: 'N/A', toKZT: 'N/A' }
     };
 
-    try {
-      const countryResponse = await axios.get(
-        `http://api.countrylayer.com/v2/name/${encodeURIComponent(countryName)}?access_key=${process.env.COUNTRY_LAYER_API_KEY}&fullText=true`
-      );
-      const cData = countryResponse.data[0] || {};
+   try {
+  const countryResponse = await axios.get(
+    `https://restcountries.com/v3.1/name/${encodeURIComponent(countryName)}?fullText=true`
+  );
+  const cData = countryResponse.data[0] || {};
 
-      countryInfo.name = cData.name || countryName;
-      countryInfo.capital = cData.capital || 'N/A';
+  countryInfo.name = cData.name?.common || countryName;
+  countryInfo.capital = cData.capital?.[0] || 'N/A';
 
-      // Languages
-      if (Array.isArray(cData.languages) && cData.languages.length > 0) {
-        countryInfo.languages = cData.languages.map(l => l.name).join(', ');
-      }
+  if (cData.languages) {
+    countryInfo.languages = Object.values(cData.languages).join(', ');
+  } else {
+    countryInfo.languages = 'N/A';
+  }
 
-      // Currencies
-      if (Array.isArray(cData.currencies) && cData.currencies.length > 0) {
-        countryInfo.currency = cData.currencies[0].code || 'N/A';
-      }
+  if (cData.currencies) {
+    const currencyCode = Object.keys(cData.currencies)[0];
+    countryInfo.currency = currencyCode || 'N/A';
+  } else {
+    countryInfo.currency = 'N/A';
+  }
 
-      // Flag (если Countrylayer дал — используем, иначе fallback)
-      if (cData.flag && cData.flag.trim() !== '') {
-        countryInfo.flag = cData.flag;
-      }
-    } catch (err) {
-      console.error('Countrylayer error:', err.response?.data || err.message);
-    }
+  if (cData.flags?.svg) {
+    countryInfo.flag = cData.flags.svg;
+  } else if (cData.cca2) {
+    countryInfo.flag = `https://flagcdn.com/w320/${cData.cca2.toLowerCase()}.png`;
+  }
+} catch (err) {
+  console.error('Restcountries error:', err.message);
+}
 
-    // 3. Exchange Rate API
     if (countryInfo.currency && countryInfo.currency !== 'N/A') {
       try {
         const exchangeResponse = await axios.get(`https://api.exchangerate-api.com/v4/latest/${countryInfo.currency}`);
@@ -76,7 +78,6 @@ app.get('/api/get-user', async (req, res) => {
       }
     }
 
-    // 4. News API
     let newsArticles = [];
     try {
       const newsResponse = await axios.get(
